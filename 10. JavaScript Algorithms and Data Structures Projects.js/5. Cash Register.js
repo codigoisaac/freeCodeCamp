@@ -10,20 +10,7 @@
 
 // Otherwise, return {status: "OPEN", change: [...]}, with the change due in coins and bills, sorted in highest to lowest order, as the value of the change key.
 
-///
-
-//todo
-// not finished yet
-
-const amount = (cid) => {
-  let total = 0;
-  for (let i of cid) {
-    total += i[1];
-  }
-  return total;
-};
-
-let vals = {
+let values = {
   PENNY: 0.01,
   NICKEL: 0.05,
   DIME: 0.1,
@@ -35,37 +22,63 @@ let vals = {
   "ONE HUNDRED": 100,
 };
 
-function checkCashRegister(price, cash, cid) {
-  if (amount(cid) >= cash - price) {
-    let ytr = cash - price; // yet to return
-    let returneds = [];
+const total = (drawer) => {
+  let total = 0;
+  for (let i of drawer) {
+    total += i[1];
+  }
+  return total;
+};
 
-    for (let i = cid.length - 1; i >= 0; i--) {
-      let curVal = vals[cid[i][0]];
-      let currs = [];
-      let returnedHere = 0;
+function calcChange(cid, mtr) {
+  let change = [];
+  for (let i = cid.length - 1; i >= 0; i--) {
+    let unitChange = [],
+      currency = cid[i][0],
+      amount = cid[i][1],
+      value = values[currency],
+      unitAdded = 0;
 
-      while (curVal <= ytr && cid[i][1] > returnedHere) {
-        ytr -= curVal;
-        returnedHere += curVal;
-        currs.push([cid[i][0], returnedHere]);
-      }
-
-      if (currs.length > 0) {
-        returneds.push(currs[currs.length - 1]);
-      } else {
-        returneds.push([cid[i][0], 0]);
-      }
+    while (value <= mtr && amount >= value) {
+      amount -= value;
+      mtr = (mtr -= value).toFixed(2);
+      unitAdded += value;
+      unitChange.splice(0, 1, [currency, unitAdded]);
     }
 
-    let stat = amount(cid) > cash - price ? "OPEN" : "CLOSED";
-    // console.log(amount(cid), (cash - price), stat)
-
-    return { status: stat, change: returneds.reverse() };
-  } else {
-    return { status: "INSUFFICIENT_FUNDS", change: [] };
+    if (unitChange.length > 0) {
+      change.push(unitChange[0]);
+    }
   }
+
+  if (total(change) < mtr) {
+    change = [];
+  }
+
+  return change;
 }
+
+function checkCashRegister(price, cash, cid) {
+  let amount = total(cid),
+    mtr = cash - price, // money to return
+    status,
+    change = [];
+
+  if (amount > mtr) {
+    change = calcChange(cid, mtr);
+    status = change.length == 0 ? "INSUFFICIENT_FUNDS" : "OPEN";
+  } else if (amount == mtr) {
+    status = "CLOSED";
+    change = cid;
+  } else {
+    status = "INSUFFICIENT_FUNDS";
+  }
+
+  return { status, change };
+}
+
+///////////////////////////////////////////////////////////////////
+// tests
 
 console.log(
   checkCashRegister(19.5, 20, [
@@ -80,15 +93,59 @@ console.log(
     ["ONE HUNDRED", 100],
   ])
 );
-// {status: "OPEN", change: [["QUARTER", 0.5]]}
 
-// console.log(checkCashRegister(3.26, 100, [["PENNY", 1.01], ["NICKEL", 2.05], ["DIME", 3.1], ["QUARTER", 4.25], ["ONE", 90], ["FIVE", 55], ["TEN", 20], ["TWENTY", 60], ["ONE HUNDRED", 100]]));
-// {status: "OPEN", change: [["TWENTY", 60], ["TEN", 20], ["FIVE", 15], ["ONE", 1], ["QUARTER", 0.5], ["DIME", 0.2], ["PENNY", 0.04]]}
+console.log(
+  checkCashRegister(3.26, 100, [
+    ["PENNY", 1.01],
+    ["NICKEL", 2.05],
+    ["DIME", 3.1],
+    ["QUARTER", 4.25],
+    ["ONE", 90],
+    ["FIVE", 55],
+    ["TEN", 20],
+    ["TWENTY", 60],
+    ["ONE HUNDRED", 100],
+  ])
+);
 
-// console.log(checkCashRegister(19.5, 20, [["PENNY", 0.01], ["NICKEL", 0], ["DIME", 0], ["QUARTER", 0], ["ONE", 0], ["FIVE", 0], ["TEN", 0], ["TWENTY", 0], ["ONE HUNDRED", 0]]));
+console.log(
+  checkCashRegister(19.5, 20, [
+    ["PENNY", 0.01],
+    ["NICKEL", 0],
+    ["DIME", 0],
+    ["QUARTER", 0],
+    ["ONE", 0],
+    ["FIVE", 0],
+    ["TEN", 0],
+    ["TWENTY", 0],
+    ["ONE HUNDRED", 0],
+  ])
+);
 
-// console.log(checkCashRegister(19.5, 20, [["PENNY", 0.5], ["NICKEL", 0], ["DIME", 0], ["QUARTER", 0], ["ONE", 0], ["FIVE", 0], ["TEN", 0], ["TWENTY", 0], ["ONE HUNDRED", 0]]));
-//CLOSED
+console.log(
+  checkCashRegister(19.5, 20, [
+    ["PENNY", 0.01],
+    ["NICKEL", 0],
+    ["DIME", 0],
+    ["QUARTER", 0],
+    ["ONE", 1],
+    ["FIVE", 0],
+    ["TEN", 0],
+    ["TWENTY", 0],
+    ["ONE HUNDRED", 0],
+  ])
+);
 
-// if closed, return status and cid ;
-// if open, return status and change ;
+console.log(
+  checkCashRegister(19.5, 20, [
+    ["PENNY", 0.5],
+    ["NICKEL", 0],
+    ["DIME", 0],
+    ["QUARTER", 0],
+    ["ONE", 0],
+    ["FIVE", 0],
+    ["TEN", 0],
+    ["TWENTY", 0],
+    ["ONE HUNDRED", 0],
+  ])
+);
